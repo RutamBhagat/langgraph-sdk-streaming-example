@@ -10,13 +10,12 @@ import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { json } from "stream/consumers";
+import { env } from "@/env";
 import remarkGfm from "remark-gfm";
 
 type Message = {
   type: "user" | "bot" | "error" | "info";
   content: string;
-  data?: any; // For displaying raw event data
 };
 
 export default function LangGraphChat() {
@@ -30,16 +29,15 @@ export default function LangGraphChat() {
 
   useEffect(() => {
     clientRef.current = new Client({
-      apiUrl: "http://localhost:8000", // Replace with your deployment URL
+      apiUrl: env.API_URL,
     });
-    createThread();
 
-    // const storedThreadId = localStorage.getItem("threadId");
-    // if (storedThreadId) {
-    //   setThreadId(storedThreadId);
-    // } else {
-    //   createThread();
-    // }
+    const storedThreadId = localStorage.getItem("threadId");
+    if (storedThreadId) {
+      setThreadId(storedThreadId);
+    } else {
+      createThread();
+    }
   }, []);
 
   const createThread = async () => {
@@ -48,7 +46,6 @@ export default function LangGraphChat() {
       const thread = await clientRef.current.threads.create();
       setThreadId(thread.thread_id);
       localStorage.setItem("threadId", thread.thread_id);
-      // Add info message about thread creation (optional)
       setMessages((prev) => [
         ...prev,
         {
@@ -84,11 +81,12 @@ export default function LangGraphChat() {
     setStreaming(true);
 
     try {
+      const assistantID = "graph";
       const streamResponse = clientRef.current.runs.stream(
         threadId,
-        "graph", // Replace 'graph' with your assistant ID if needed
+        assistantID,
         {
-          input: { question: input }, // Adjust input as needed by your graph
+          input: { question: input },
           streamMode: "events",
         },
       );
