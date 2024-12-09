@@ -7,8 +7,10 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Client } from "@langchain/langgraph-sdk";
 import { Input } from "@/components/ui/input";
+import ReactMarkdown from "react-markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import remarkGfm from "remark-gfm";
 
 type Message = {
   type: "user" | "bot" | "error" | "info";
@@ -89,58 +91,37 @@ export default function LangGraphChat() {
         },
       );
 
-      for await (const chunk of streamResponse) {
-        setMessages((prev) => [
-          ...prev,
-          { type: "info", content: `Event: ${chunk.event}`, data: chunk.data }, // Display raw event data
-        ]);
+      let botMessageContent = "";
 
-        // Example processing of 'on_chat_model_stream' event
+      setMessages((prev) => [
+        ...prev,
+        { type: "bot", content: botMessageContent },
+      ]);
+
+      for await (const chunk of streamResponse) {
         if (
           chunk.event === "events" &&
           chunk.data.event === "on_chat_model_stream"
         ) {
-          const botMessage: Message = {
-            type: "bot",
-            content: chunk.data.data.chunk.content,
-          };
-          setMessages((prev) => {
-            // Update existing bot message if present, otherwise add new one
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage && lastMessage.type === "bot") {
-              return [
-                ...prev.slice(0, -1),
-                {
-                  ...lastMessage,
-                  content: lastMessage.content + botMessage.content,
-                },
-              ];
-            } else {
-              return [...prev, botMessage];
-            }
-          });
-        }
-        // Example processing of 'on_chain_end' event for final output
-        else if (
+          botMessageContent += chunk.data.data.chunk.content;
+        } else if (
           chunk.event === "events" &&
           chunk.data.event === "on_chain_end"
         ) {
-          const botMessage: Message = {
-            type: "bot",
-            content: chunk.data.data.output?.generation || "",
-          }; // Assumes the final output is 'generation' from the 'on_chain_end' event data
-          setMessages((prev) => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage && lastMessage.type === "bot") {
-              return [
-                ...prev.slice(0, -1),
-                { ...lastMessage, content: botMessage.content },
-              ];
-            } else {
-              return [...prev, botMessage];
-            }
-          });
+          botMessageContent = chunk.data.data.output?.generation || "";
         }
+
+        setMessages((prev) => {
+          const lastMessage = prev[prev.length - 1];
+          if (lastMessage && lastMessage.type === "bot") {
+            return [
+              ...prev.slice(0, -1),
+              { ...lastMessage, content: botMessageContent },
+            ];
+          } else {
+            return [...prev, { type: "bot", content: botMessageContent }];
+          }
+        });
       }
     } catch (error) {
       console.error("Error during streaming:", error);
@@ -201,7 +182,7 @@ export default function LangGraphChat() {
             >
               <div
                 className={cn(
-                  "max-w-[80%] rounded-[20px] px-4 py-2",
+                  "prose max-w-[80%] rounded-[20px] px-4 py-2",
                   message.type === "user"
                     ? "bg-white text-[#15162c]"
                     : message.type === "bot"
@@ -209,7 +190,13 @@ export default function LangGraphChat() {
                       : "bg-red-500 text-white",
                 )}
               >
-                <p className="text-[15px]">{message.content}</p>
+                {message.type === "bot" ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                  </ReactMarkdown>
+                ) : (
+                  <p className="text-[15px]">{message.content}</p>
+                )}
               </div>
             </div>
           ))}
