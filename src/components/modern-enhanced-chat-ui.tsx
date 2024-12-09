@@ -100,11 +100,18 @@ export default function LangGraphChat() {
           chunk.data.event == "on_chat_model_stream" &&
           chunk.data.metadata.langgraph_node == "generate_node"
         ) {
-          const data = chunk.data.data;
-          setMessages((prev) => [
-            ...prev,
-            { type: "bot", content: data.chunk.content },
-          ]);
+          const newContent = chunk.data.data.chunk.content;
+          setMessages((prev: Message[]) => {
+            const lastMessage = prev[prev.length - 1];
+            return [
+              ...prev.slice(0, -1),
+              {
+                ...lastMessage,
+                type: lastMessage?.type ?? "bot",
+                content: (lastMessage?.content ?? "") + newContent,
+              },
+            ];
+          });
         }
       }
     } catch (error) {
