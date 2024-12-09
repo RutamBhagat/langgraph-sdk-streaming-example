@@ -11,24 +11,23 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 type Message = {
-  type: "user" | "bot" | "error";
+  type: "user" | "bot" | "error" | "info";
   content: string;
+  data?: any; // For displaying raw event data
 };
 
-export default function ModernEnhancedChatUI() {
+export default function LangGraphChat() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
-  const [isBotTyping, setIsBotTyping] = useState(false);
 
   const clientRef = useRef<Client | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const prevMessagesLengthRef = useRef<number>(0);
 
   useEffect(() => {
     clientRef.current = new Client({
-      apiUrl: "http://localhost:8000",
+      apiUrl: "http://localhost:8000", // Replace with your deployment URL
     });
 
     const storedThreadId = localStorage.getItem("threadId");
@@ -40,32 +39,34 @@ export default function ModernEnhancedChatUI() {
   }, []);
 
   const createThread = async () => {
-    if (clientRef.current !== null) {
-      try {
-        const thread = await clientRef.current.threads.create({});
-        setThreadId(thread.thread_id);
-        localStorage.setItem("threadId", thread.thread_id);
-      } catch (error) {
-        console.error("Error creating thread:", error);
-        setMessages((prev) => [
-          ...prev,
-          {
-            type: "error",
-            content: "Failed to create conversation thread. Please try again.",
-          },
-        ]);
-      }
+    if (!clientRef.current) return;
+    try {
+      const thread = await clientRef.current.threads.create();
+      setThreadId(thread.thread_id);
+      localStorage.setItem("threadId", thread.thread_id);
+      // Add info message about thread creation (optional)
+      setMessages((prev) => [
+        ...prev,
+        {
+          type: "info",
+          content: `New thread created: ${thread.thread_id}`,
+        },
+      ]);
+    } catch (error) {
+      console.error("Error creating thread:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          type: "error",
+          content: "Failed to create conversation thread. Please try again.",
+        },
+      ]);
     }
   };
 
   useEffect(() => {
-    const shouldScroll =
-      scrollAreaRef.current &&
-      messages.length !== prevMessagesLengthRef.current;
-
-    if (shouldScroll) {
+    if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-      prevMessagesLengthRef.current = messages.length;
     }
   }, [messages]);
 
@@ -77,34 +78,68 @@ export default function ModernEnhancedChatUI() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setStreaming(true);
-    setIsBotTyping(true);
 
     try {
-      const stream = clientRef.current.runs.stream(threadId, "graph", {
-        input: { question: input },
-        streamMode: "events",
-      });
+      const streamResponse = clientRef.current.runs.stream(
+        threadId,
+        "graph", // Replace 'graph' with your assistant ID if needed
+        {
+          input: { question: input }, // Adjust input as needed by your graph
+          streamMode: "events",
+        },
+      );
 
-      let botMessageContent = "";
-      for await (const chunk of stream) {
-        if (chunk.event === "events") {
-          if (chunk.data.event === "on_chain_end") {
-            if (
-              "generation" in chunk.data.data.output &&
-              typeof chunk.data.data.output.generation === "string"
-            ) {
-              botMessageContent = chunk.data.data.output.generation;
-              updateBotMessage(botMessageContent);
+      for await (const chunk of streamResponse) {
+        setMessages((prev) => [
+          ...prev,
+          { type: "info", content: `Event: ${chunk.event}`, data: chunk.data }, // Display raw event data
+        ]);
+
+        // Example processing of 'on_chat_model_stream' event
+        if (
+          chunk.event === "events" &&
+          chunk.data.event === "on_chat_model_stream"
+        ) {
+          const botMessage: Message = {
+            type: "bot",
+            content: chunk.data.data.chunk.content,
+          };
+          setMessages((prev) => {
+            // Update existing bot message if present, otherwise add new one
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage && lastMessage.type === "bot") {
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...lastMessage,
+                  content: lastMessage.content + botMessage.content,
+                },
+              ];
+            } else {
+              return [...prev, botMessage];
             }
-          } else if (chunk.data.event === "on_chat_model_stream") {
-            if (
-              "content" in chunk.data.data.chunk &&
-              typeof chunk.data.data.chunk.content === "string"
-            ) {
-              botMessageContent += chunk.data.data.chunk.content;
-              updateBotMessage(botMessageContent);
+          });
+        }
+        // Example processing of 'on_chain_end' event for final output
+        else if (
+          chunk.event === "events" &&
+          chunk.data.event === "on_chain_end"
+        ) {
+          const botMessage: Message = {
+            type: "bot",
+            content: chunk.data.data.output?.generation || "",
+          }; // Assumes the final output is 'generation' from the 'on_chain_end' event data
+          setMessages((prev) => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage && lastMessage.type === "bot") {
+              return [
+                ...prev.slice(0, -1),
+                { ...lastMessage, content: botMessage.content },
+              ];
+            } else {
+              return [...prev, botMessage];
             }
-          }
+          });
         }
       }
     } catch (error) {
@@ -136,20 +171,7 @@ export default function ModernEnhancedChatUI() {
       }
     } finally {
       setStreaming(false);
-      setIsBotTyping(false);
     }
-  };
-
-  const updateBotMessage = (content: string) => {
-    setMessages((prev) => {
-      const lastMessageIndex = prev.length - 1;
-      if (lastMessageIndex >= 0 && prev[lastMessageIndex]?.type === "bot") {
-        const updatedMessages = [...prev];
-        updatedMessages[lastMessageIndex] = { type: "bot", content };
-        return updatedMessages;
-      }
-      return [...prev, { type: "bot", content }];
-    });
   };
 
   return (
@@ -191,7 +213,7 @@ export default function ModernEnhancedChatUI() {
               </div>
             </div>
           ))}
-          {(streaming || isBotTyping) && (
+          {streaming && (
             <div className="flex items-center gap-2 text-white/70">
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">AI is typing...</span>
