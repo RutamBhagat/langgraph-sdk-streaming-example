@@ -80,7 +80,7 @@ export default function ModernEnhancedChatUI() {
     setIsBotTyping(true);
 
     try {
-      const stream = clientRef.current.runs.stream(threadId, "agent", {
+      const stream = clientRef.current.runs.stream(threadId, "graph", {
         input: { question: input },
         streamMode: "events",
       });
