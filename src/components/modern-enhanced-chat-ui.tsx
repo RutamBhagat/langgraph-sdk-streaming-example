@@ -1,21 +1,21 @@
 "use client";
 
+import { ArrowLeft, Loader2, Mic, Phone, Send, Video } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Loader2, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Client } from "@langchain/langgraph-sdk";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 type Message = {
   type: "user" | "bot" | "error";
   content: string;
 };
 
-export default function EnhancedChatUI() {
+export default function ModernEnhancedChatUI() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -107,65 +107,84 @@ export default function EnhancedChatUI() {
   };
 
   return (
-    <Card className="mx-auto flex h-[600px] w-full max-w-2xl flex-col">
-      <CardContent className="flex-grow overflow-hidden p-6">
-        <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
+    <div className="mx-auto flex h-[844px] w-full max-w-md flex-col overflow-hidden rounded-[40px] bg-[#15162c]">
+      {/* Header */}
+      <div className="flex items-center gap-3 p-4 text-white">
+        <Avatar className="h-12 w-12 border-2 border-red-600">
+          <AvatarImage src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/HAL9000.svg/2048px-HAL9000.svg.png" />
+          <AvatarFallback>AI</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <h2 className="text-lg font-semibold">AI Assistant</h2>
+          <p className="text-sm text-white/90">Online</p>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+        <div className="flex flex-col gap-4">
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`mb-4 flex items-start ${
-                message.type === "user" ? "justify-end" : "justify-start"
-              }`}
+              className={cn(
+                "flex",
+                message.type === "user" ? "justify-end" : "justify-start",
+              )}
             >
-              {message.type !== "user" && (
-                <Avatar className="mr-2 h-8 w-8">
-                  <AvatarImage src="/bot-avatar.png" alt="Bot" />
-                  <AvatarFallback>Bot</AvatarFallback>
-                </Avatar>
-              )}
               <div
-                className={`max-w-[80%] rounded-lg p-3 ${
+                className={cn(
+                  "max-w-[80%] rounded-[20px] px-4 py-2",
                   message.type === "user"
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-white text-[#15162c]"
                     : message.type === "bot"
-                      ? "bg-secondary text-secondary-foreground"
-                      : "bg-destructive text-destructive-foreground"
-                }`}
+                      ? "bg-[#8378FF] text-white"
+                      : "bg-red-500 text-white",
+                )}
               >
-                <p className="text-sm">{message.content}</p>
+                <p className="text-[15px]">{message.content}</p>
               </div>
-              {message.type === "user" && (
-                <Avatar className="ml-2 h-8 w-8">
-                  <AvatarImage src="/user-avatar.png" alt="User" />
-                  <AvatarFallback>You</AvatarFallback>
-                </Avatar>
-              )}
             </div>
           ))}
           {streaming && (
-            <div className="text-muted-foreground flex items-center">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              <span className="text-sm">Bot is typing...</span>
+            <div className="flex items-center text-white/70">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <span className="text-sm">AI is typing...</span>
             </div>
           )}
-        </ScrollArea>
-      </CardContent>
-      <CardFooter className="border-t p-4">
-        <form onSubmit={handleSubmit} className="flex w-full gap-2">
-          <Input
-            type="text"
-            placeholder="Type your message here..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+        </div>
+      </ScrollArea>
+
+      {/* Input */}
+      <div className="p-4">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <div className="relative flex-1">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message..."
+              className="h-12 rounded-full bg-white pl-12 pr-4 text-[#15162c]"
+              disabled={streaming}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="absolute left-2 top-1/2 -translate-y-1/2 text-[#15162c] hover:text-[#15162c]/90"
+              disabled={streaming}
+            >
+              <Mic className="h-5 w-5" />
+            </Button>
+          </div>
+          <Button
+            type="submit"
+            size="icon"
+            className="h-12 w-12 rounded-full bg-white text-[#15162c] hover:bg-white/90 disabled:opacity-50"
             disabled={streaming}
-            className="flex-grow"
-          />
-          <Button type="submit" disabled={streaming} size="icon">
-            <Send className="h-4 w-4" />
-            <span className="sr-only">Send message</span>
+          >
+            <Send className="h-5 w-5" />
           </Button>
         </form>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }
