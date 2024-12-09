@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { json } from "stream/consumers";
 import remarkGfm from "remark-gfm";
 
 type Message = {
@@ -31,13 +32,14 @@ export default function LangGraphChat() {
     clientRef.current = new Client({
       apiUrl: "http://localhost:8000", // Replace with your deployment URL
     });
+    createThread();
 
-    const storedThreadId = localStorage.getItem("threadId");
-    if (storedThreadId) {
-      setThreadId(storedThreadId);
-    } else {
-      createThread();
-    }
+    // const storedThreadId = localStorage.getItem("threadId");
+    // if (storedThreadId) {
+    //   setThreadId(storedThreadId);
+    // } else {
+    //   createThread();
+    // }
   }, []);
 
   const createThread = async () => {
@@ -91,27 +93,18 @@ export default function LangGraphChat() {
         },
       );
 
-      let botMessageContent = "";
-
       setMessages((prev) => [...prev, { type: "bot", content: "" }]);
 
       for await (const chunk of streamResponse) {
-        if (chunk.event === "events" && chunk.data.event === "on_chain_end") {
-          // Extract generation from the on_chain_end event
-          const finalGeneration = chunk.data.data.output?.generation || "";
-
-          // Update ONLY the bot message with the final generation
-          setMessages((prev) => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage && lastMessage.type === "bot") {
-              return [
-                ...prev.slice(0, -1),
-                { ...lastMessage, content: finalGeneration },
-              ];
-            } else {
-              return [...prev, { type: "bot", content: finalGeneration }];
-            }
-          });
+        if (
+          chunk.data.event == "on_chat_model_stream" &&
+          chunk.data.metadata.langgraph_node == "generate_node"
+        ) {
+          const data = chunk.data.data;
+          setMessages((prev) => [
+            ...prev,
+            { type: "bot", content: data.chunk.content },
+          ]);
         }
       }
     } catch (error) {
@@ -147,7 +140,7 @@ export default function LangGraphChat() {
   };
 
   return (
-    <div className="mx-auto flex h-[844px] w-full max-w-md flex-col overflow-hidden rounded-[40px] bg-[#15162c]">
+    <div className="mx-auto flex h-[844px] w-full flex-col overflow-hidden rounded-[40px] bg-[#15162c]">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 text-white">
         <Avatar className="h-12 w-12 border-2 border-red-600">
