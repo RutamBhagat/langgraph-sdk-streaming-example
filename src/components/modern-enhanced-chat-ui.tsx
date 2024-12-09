@@ -19,41 +19,68 @@ export default function ModernEnhancedChatUI() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [isBotTyping, setIsBotTyping] = useState(false);
+
   const clientRef = useRef<Client | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef<number>(0);
 
   useEffect(() => {
     clientRef.current = new Client({
       apiUrl: "http://localhost:8000",
     });
 
-    const createThread = async () => {
-      if (clientRef.current !== null) {
-        const thread = await clientRef.current.threads.create({});
-        console.log("Thread created:", thread);
-      }
-    };
-    void createThread();
+    const storedThreadId = localStorage.getItem("threadId");
+    if (storedThreadId) {
+      setThreadId(storedThreadId);
+    } else {
+      createThread();
+    }
   }, []);
 
+  const createThread = async () => {
+    if (clientRef.current !== null) {
+      try {
+        const thread = await clientRef.current.threads.create({});
+        setThreadId(thread.thread_id);
+        localStorage.setItem("threadId", thread.thread_id);
+      } catch (error) {
+        console.error("Error creating thread:", error);
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "error",
+            content: "Failed to create conversation thread. Please try again.",
+          },
+        ]);
+      }
+    }
+  };
+
   useEffect(() => {
-    if (scrollAreaRef.current) {
+    const shouldScroll =
+      scrollAreaRef.current &&
+      messages.length !== prevMessagesLengthRef.current;
+
+    if (shouldScroll) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      prevMessagesLengthRef.current = messages.length;
     }
   }, [messages]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!input.trim() || streaming || !clientRef.current) return;
+    if (!input.trim() || streaming || !clientRef.current || !threadId) return;
 
     const userMessage: Message = { type: "user", content: input };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setStreaming(true);
+    setIsBotTyping(true);
 
     try {
-      const thread = await clientRef.current.threads.create({});
-      const stream = clientRef.current.runs.stream(thread.thread_id, "agent", {
+      const stream = clientRef.current.runs.stream(threadId, "agent", {
         input: { question: input },
         streamMode: "events",
       });
@@ -62,48 +89,67 @@ export default function ModernEnhancedChatUI() {
       for await (const chunk of stream) {
         if (chunk.event === "events") {
           if (chunk.data.event === "on_chain_end") {
-            if ("generation" in chunk.data.data.output) {
-              botMessageContent += chunk.data.data.output.generation;
-              setMessages((prev) => [
-                ...prev,
-                { type: "bot", content: botMessageContent },
-              ]);
+            if (
+              "generation" in chunk.data.data.output &&
+              typeof chunk.data.data.output.generation === "string"
+            ) {
+              botMessageContent = chunk.data.data.output.generation;
+              updateBotMessage(botMessageContent);
             }
           } else if (chunk.data.event === "on_chat_model_stream") {
-            if ("content" in chunk.data.data.chunk) {
+            if (
+              "content" in chunk.data.data.chunk &&
+              typeof chunk.data.data.chunk.content === "string"
+            ) {
               botMessageContent += chunk.data.data.chunk.content;
-              setMessages((prevMessages) => {
-                const lastMessageIndex = prevMessages.length - 1;
-                if (
-                  lastMessageIndex >= 0 &&
-                  prevMessages[lastMessageIndex]?.type === "bot"
-                ) {
-                  const updatedMessages = [...prevMessages];
-                  updatedMessages[lastMessageIndex] = {
-                    type: "bot",
-                    content: botMessageContent,
-                  };
-                  return updatedMessages;
-                } else {
-                  return [
-                    ...prevMessages,
-                    { type: "bot", content: botMessageContent },
-                  ];
-                }
-              });
+              updateBotMessage(botMessageContent);
             }
           }
         }
       }
     } catch (error) {
       console.error("Error during streaming:", error);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { type: "error", content: "An error occurred during streaming." },
-      ]);
+      if (error instanceof TypeError) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "error",
+            content: "A network error occurred. Please check your connection.",
+          },
+        ]);
+      } else if (error instanceof Error) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "error",
+            content: `API error: ${error.message}`,
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "error",
+            content: "An unexpected error occurred during streaming.",
+          },
+        ]);
+      }
     } finally {
       setStreaming(false);
+      setIsBotTyping(false);
     }
+  };
+
+  const updateBotMessage = (content: string) => {
+    setMessages((prev) => {
+      const lastMessageIndex = prev.length - 1;
+      if (lastMessageIndex >= 0 && prev[lastMessageIndex]?.type === "bot") {
+        const updatedMessages = [...prev];
+        updatedMessages[lastMessageIndex] = { type: "bot", content };
+        return updatedMessages;
+      }
+      return [...prev, { type: "bot", content }];
+    });
   };
 
   return (
@@ -145,9 +191,9 @@ export default function ModernEnhancedChatUI() {
               </div>
             </div>
           ))}
-          {streaming && (
-            <div className="flex items-center text-white/70">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          {(streaming || isBotTyping) && (
+            <div className="flex items-center gap-2 text-white/70">
+              <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">AI is typing...</span>
             </div>
           )}
