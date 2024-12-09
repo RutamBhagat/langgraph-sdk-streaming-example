@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeft, Loader2, Mic, Phone, Send, Video } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Loader2, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -165,15 +165,6 @@ export default function ModernEnhancedChatUI() {
               className="h-12 rounded-full bg-white pl-12 pr-4 text-[#15162c]"
               disabled={streaming}
             />
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="absolute left-2 top-1/2 -translate-y-1/2 text-[#15162c] hover:text-[#15162c]/90"
-              disabled={streaming}
-            >
-              <Mic className="h-5 w-5" />
-            </Button>
           </div>
           <Button
             type="submit"
