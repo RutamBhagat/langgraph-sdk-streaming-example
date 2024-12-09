@@ -29,7 +29,7 @@ export default function LangGraphChat() {
 
   useEffect(() => {
     clientRef.current = new Client({
-      apiUrl: env.API_URL,
+      apiUrl: env.NEXT_PUBLIC_API_URL,
     });
 
     const storedThreadId = localStorage.getItem("threadId");
