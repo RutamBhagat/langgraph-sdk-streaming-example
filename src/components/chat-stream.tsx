@@ -1,39 +1,31 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Loader2, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Client } from "@langchain/langgraph-sdk"; // Changed StreamMode to StreamEvent
+import { Client } from "@langchain/langgraph-sdk";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-export default function ChatStream() {
+type Message = {
+  type: "user" | "bot" | "error";
+  content: string;
+};
+
+export default function EnhancedChatUI() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [messages, setMessages] = useState<{ type: string; content: string }[]>(
-    [],
-  );
+  const [messages, setMessages] = useState<Message[]>([]);
   const clientRef = useRef<Client | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Initialize the client only once when the component mounts
     clientRef.current = new Client({
       apiUrl: "http://localhost:8000",
     });
-
-    // Pre-create a thread. This is more efficient than creating
-    // a new thread for every request. However, make sure your LangServe
-    // instance is configured to handle this correctly (e.g., by clearing
-    // thread state between requests if needed.) otherwise there might be
-    // some unexpected issues if the state isn't managed correctly.
 
     const createThread = async () => {
       if (clientRef.current !== null) {
@@ -45,36 +37,30 @@ export default function ChatStream() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!input.trim() || streaming || !clientRef.current) return;
 
-    const userMessage = { type: "user", content: input };
+    const userMessage: Message = { type: "user", content: input };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInput("");
     setStreaming(true);
 
     try {
-      const thread = await clientRef.current.threads.create({}); // Create a thread for each request
-
-      // Stream events
-      const stream = clientRef.current.runs.stream(
-        thread.thread_id,
-        "agent", // Replace with your agent ID if different
-        {
-          input: { question: input }, // Or whatever your graph input looks like
-          streamMode: "events", // Critical: Stream events
-        },
-      );
+      const thread = await clientRef.current.threads.create({});
+      const stream = clientRef.current.runs.stream(thread.thread_id, "agent", {
+        input: { question: input },
+        streamMode: "events",
+      });
 
       let botMessageContent = "";
       for await (const chunk of stream) {
-        // Correctly access chunk.event and chunk.data
         if (chunk.event === "events") {
-          //  Access the nested event and data from the LangGraph chain
           if (chunk.data.event === "on_chain_end") {
             if ("generation" in chunk.data.data.output) {
               botMessageContent += chunk.data.data.output.generation;
@@ -121,47 +107,62 @@ export default function ChatStream() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>LangGraph Chat</CardTitle>
-        <CardDescription>Streaming generation from agent</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+    <Card className="mx-auto flex h-[600px] w-full max-w-2xl flex-col">
+      <CardContent className="flex-grow overflow-hidden p-6">
+        <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${
+              className={`mb-4 flex items-start ${
                 message.type === "user" ? "justify-end" : "justify-start"
               }`}
             >
+              {message.type !== "user" && (
+                <Avatar className="mr-2 h-8 w-8">
+                  <AvatarImage src="/bot-avatar.png" alt="Bot" />
+                  <AvatarFallback>Bot</AvatarFallback>
+                </Avatar>
+              )}
               <div
-                className={`rounded-lg p-3 ${
+                className={`max-w-[80%] rounded-lg p-3 ${
                   message.type === "user"
-                    ? "bg-blue-500 text-white"
+                    ? "bg-primary text-primary-foreground"
                     : message.type === "bot"
-                      ? "bg-gray-200 text-black"
-                      : "bg-red-500 text-white"
+                      ? "bg-secondary text-secondary-foreground"
+                      : "bg-destructive text-destructive-foreground"
                 }`}
               >
-                {message.content}
+                <p className="text-sm">{message.content}</p>
               </div>
+              {message.type === "user" && (
+                <Avatar className="ml-2 h-8 w-8">
+                  <AvatarImage src="/user-avatar.png" alt="User" />
+                  <AvatarFallback>You</AvatarFallback>
+                </Avatar>
+              )}
             </div>
           ))}
-          <div ref={messagesEndRef} />
-        </div>
+          {streaming && (
+            <div className="text-muted-foreground flex items-center">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <span className="text-sm">Bot is typing...</span>
+            </div>
+          )}
+        </ScrollArea>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="border-t p-4">
         <form onSubmit={handleSubmit} className="flex w-full gap-2">
           <Input
             type="text"
-            placeholder="Enter your question here"
+            placeholder="Type your message here..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={streaming}
+            className="flex-grow"
           />
-          <Button type="submit" disabled={streaming}>
-            Send
+          <Button type="submit" disabled={streaming} size="icon">
+            <Send className="h-4 w-4" />
+            <span className="sr-only">Send message</span>
           </Button>
         </form>
       </CardFooter>
