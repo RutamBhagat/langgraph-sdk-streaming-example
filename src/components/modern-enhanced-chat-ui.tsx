@@ -93,35 +93,26 @@ export default function LangGraphChat() {
 
       let botMessageContent = "";
 
-      setMessages((prev) => [
-        ...prev,
-        { type: "bot", content: botMessageContent },
-      ]);
+      setMessages((prev) => [...prev, { type: "bot", content: "" }]);
 
       for await (const chunk of streamResponse) {
-        if (
-          chunk.event === "events" &&
-          chunk.data.event === "on_chat_model_stream"
-        ) {
-          botMessageContent += chunk.data.data.chunk.content;
-        } else if (
-          chunk.event === "events" &&
-          chunk.data.event === "on_chain_end"
-        ) {
-          botMessageContent = chunk.data.data.output?.generation || "";
-        }
+        if (chunk.event === "events" && chunk.data.event === "on_chain_end") {
+          // Extract generation from the on_chain_end event
+          const finalGeneration = chunk.data.data.output?.generation || "";
 
-        setMessages((prev) => {
-          const lastMessage = prev[prev.length - 1];
-          if (lastMessage && lastMessage.type === "bot") {
-            return [
-              ...prev.slice(0, -1),
-              { ...lastMessage, content: botMessageContent },
-            ];
-          } else {
-            return [...prev, { type: "bot", content: botMessageContent }];
-          }
-        });
+          // Update ONLY the bot message with the final generation
+          setMessages((prev) => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage && lastMessage.type === "bot") {
+              return [
+                ...prev.slice(0, -1),
+                { ...lastMessage, content: finalGeneration },
+              ];
+            } else {
+              return [...prev, { type: "bot", content: finalGeneration }];
+            }
+          });
+        }
       }
     } catch (error) {
       console.error("Error during streaming:", error);
