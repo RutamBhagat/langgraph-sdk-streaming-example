@@ -14,7 +14,7 @@ export default function HomePage() {
           <div className="mx-auto max-w-6xl">
             <div className="flex items-center gap-2 text-white/80">
               <Bird className="h-6 w-6" />
-              <span className="text-sm font-medium">Langgraph</span>
+              <span className="text-sm font-medium">TalkSpark</span>
             </div>
           </div>
         </header>
@@ -24,13 +24,13 @@ export default function HomePage() {
           <div className="mx-auto max-w-6xl">
             <div className="mb-12 md:mb-16">
               <h1 className="bg-gradient-to-r from-white to-white/80 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl md:text-6xl">
-                Build Powerful AI Apps with{' '}
+                AI{' '}
                 <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  Langgraph
+                  Conversation Starter
                 </span>
               </h1>
               <p className="mt-4 max-w-2xl text-lg text-white/70">
-                Create sophisticated AI applications with streaming capabilities and advanced state management.
+                Generate personalized conversation starters by analyzing social media profiles, making it easier to initiate meaningful connections.
               </p>
             </div>
 
@@ -38,18 +38,18 @@ export default function HomePage() {
             <div className="mb-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               <FeatureCard 
                 icon={<MessageSquare className="h-5 w-5" />}
-                title="Real-time Streaming"
-                description="Experience instant responses with our advanced streaming architecture."
+                title="Profile Analysis"
+                description="Automated system that analyzes social media profiles using LangGraph and custom tools."
               />
               <FeatureCard 
                 icon={<Zap className="h-5 w-5" />}
-                title="State Management"
-                description="Built-in state handling for complex conversation flows."
+                title="Custom Icebreakers"
+                description="Generate personalized conversation starters based on detailed profile analysis."
               />
               <FeatureCard 
                 icon={<Bird className="h-5 w-5" />}
-                title="AI-Powered"
-                description="Leverage the latest AI models for natural conversations."
+                title="Multi-Platform"
+                description="Supports various social media platforms through optimized web scraping."
               />
             </div>
 
