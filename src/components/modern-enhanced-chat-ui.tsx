@@ -31,13 +31,7 @@ export default function LangGraphChat() {
     clientRef.current = new Client({
       apiUrl: env.NEXT_PUBLIC_API_URL,
     });
-
-    const storedThreadId = localStorage.getItem("threadId");
-    if (storedThreadId) {
-      setThreadId(storedThreadId);
-    } else {
-      createThread();
-    }
+    createThread();
   }, []);
 
   const createThread = async () => {
