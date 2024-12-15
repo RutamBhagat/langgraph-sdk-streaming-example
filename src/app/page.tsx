@@ -1,4 +1,4 @@
-import { Bird, MessageSquare, Zap } from "lucide-react";
+import { Book, MessageSquare, Zap } from "lucide-react";
 
 import { GradientBackground } from "@/components/gradient-background";
 import ModernEnhancedChatUI from "@/components/modern-enhanced-chat-ui";
@@ -13,8 +13,8 @@ export default function HomePage() {
         <header className="px-6 pt-8 pb-16 sm:px-8 md:pt-12">
           <div className="mx-auto max-w-6xl">
             <div className="flex items-center gap-2 text-white/80">
-              <Bird className="h-6 w-6" />
-              <span className="text-sm font-medium">TalkSpark</span>
+              <Book className="h-6 w-6" />
+              <span className="text-sm font-medium">Code Wizard</span>
             </div>
           </div>
         </header>
@@ -24,13 +24,13 @@ export default function HomePage() {
           <div className="mx-auto max-w-6xl">
             <div className="mb-12 md:mb-16">
               <h1 className="bg-gradient-to-r from-white to-white/80 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl md:text-6xl">
-                AI{' '}
+                Master LangChain with{' '}
                 <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  Conversation Starter
+                  Code Wizard
                 </span>
               </h1>
               <p className="mt-4 max-w-2xl text-lg text-white/70">
-                Generate personalized conversation starters by analyzing social media profiles, making it easier to initiate meaningful connections.
+                Your AI-powered assistant for understanding and using LangChain documentation effortlessly. Ask any question about LangChain concepts or code.
               </p>
             </div>
 
@@ -38,18 +38,18 @@ export default function HomePage() {
             <div className="mb-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               <FeatureCard 
                 icon={<MessageSquare className="h-5 w-5" />}
-                title="Profile Analysis"
-                description="Automated system that analyzes social media profiles using LangGraph and custom tools."
+                title="Interactive Documentation"
+                description="Smart documentation search powered by LangGraph DAG and vector databases for precise information retrieval."
               />
               <FeatureCard 
                 icon={<Zap className="h-5 w-5" />}
-                title="Custom Icebreakers"
-                description="Generate personalized conversation starters based on detailed profile analysis."
+                title="Real-time Streaming"
+                description="Get instant responses with our streaming architecture and efficient caching system."
               />
               <FeatureCard 
-                icon={<Bird className="h-5 w-5" />}
-                title="Multi-Platform"
-                description="Supports various social media platforms through optimized web scraping."
+                icon={<Book className="h-5 w-5" />}
+                title="Multiple Models"
+                description="Switch between ChatOpenAI and local LLaMA models for flexible AI interactions."
               />
             </div>
 
